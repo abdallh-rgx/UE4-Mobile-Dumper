@@ -17,35 +17,20 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Setup Gradle
-        uses: gradle/gradle-build-action@v3
-
       - name: Setup Android NDK
         uses: nttld/setup-ndk@v1
         with:
           ndk-version: r25c
 
-      - name: Grant Execute Permission for Gradle
-        run: chmod +x gradlew || true
-
-      - name: Build Project
+      - name: Build with NDK
         run: |
-          if [ -f "./gradlew" ]; then
-            ./gradlew assembleRelease
-          else
-            gradle assembleRelease
-          fi
-
-      - name: Extract DEX
-        run: |
-          mkdir -p output_dex
-          find app/build/ -name "*.apk" -exec unzip -o {} "*.dex" -d output_dex/ \; || true
-          find app/build/intermediates/ -name "*.dex" -exec cp {} output_dex/ \; || true
+          MK_PATH=$(find . -name "Android.mk" -print -quit)
+          JNI_DIR=$(dirname "$MK_PATH")
+          cd "$JNI_DIR"
+          ndk-build APP_PLATFORM=android-26 APP_ABI=arm64-v8a
 
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: UE4-Mobile-Dumper-Binaries
-          path: |
-            **/libs/arm64-v8a/
-            output_dex/
+          path: "**/libs/arm64-v8a/"
