@@ -87,7 +87,7 @@ jint JNI_OnLoad(JavaVM* vm, void* reserved) {
     Menu.Credits = "Made by Ascarre";
     Menu.isRunning = true;
 
-    Offsets::ExampleGame();
+    Offsets::Fortnitev2130();
 
     std::thread(DumperThread).detach();
 
