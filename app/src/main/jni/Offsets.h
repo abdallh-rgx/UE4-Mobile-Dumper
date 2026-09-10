@@ -1,7 +1,3 @@
-//
-// Created by Ascarre on 12-04-2026.
-//
-
 #pragma once
 
 #include "Includes.h"
@@ -9,14 +5,14 @@
 bool isLibDumped = false, isFastDump = false, isRebuiltLibDump = false, isStringsDump = false, isStringDumped = false, isObjectsDump = false, isObjectsDumped = false, isSDKUDump = false, isSDKUDumped = false, isSDKWDump = false, isSDKWDumped = false, isActorsDump = false, isActorsDumped = false, isBoneDump = false, isBoneDumped = false;
 
 namespace Offsets {
-    uintptr_t PointerSize = sizeof(void*);
+    uintptr_t PointerSize = sizeof(void*); // 8-bytes on ARM64
 
-    bool isUE423 = false, isDereferencing = false, isXorDecrypt = false;
+    bool isUE423 = true, isDereferencing = false, isXorDecrypt = false;
 
-    // EngineOffsets
-    uintptr_t GWorld = 0x0;
-    uintptr_t GNames = 0x0;
-    uintptr_t GUObjectArray = 0x0; // whatever found in IDA do a (minus) - FUObjectArrayToTUObjectArray (0x10) to get the value or set FUObjectArrayToTUObjectArray to 0
+    // EngineOffsets (Fortnite v21.30 ARM64)
+    uintptr_t GWorld = 0xDE34970;        // GEngine / WorldContext Entry
+    uintptr_t GNames = 0xDC960C0;        // FNamePool Base
+    uintptr_t GUObjectArray = 0xDCD6E08; // FUObjectArray
 
     // TNameEntry
     uintptr_t TNameEntryToNameString = 0x10;
@@ -24,7 +20,7 @@ namespace Offsets {
     // FNamePool
     uintptr_t GNamesToFNamePool = 0x0;
     uintptr_t FNamePoolToBlocks = 0x10;
-    uintptr_t FNameStride = 0x2; // sometimes 0x4 in UE5.0+
+    uintptr_t FNameStride = 0x2;         // UE5 Alignment Stride
     uintptr_t FNamePoolToCurrentBlock = 0x8;
     uintptr_t FNamePoolToCurrentByteCursor = 0xC;
 
@@ -34,9 +30,9 @@ namespace Offsets {
     uintptr_t FNameEntryToString = 0x2;
 
     // FUObjectArray
-    uintptr_t FUObjectArrayToTUObjectArray = 0x10; // 0x10 in UE4.23+ but its already calculated at runtime in most games so set this to 0 to minus from GUObjectArray
+    uintptr_t FUObjectArrayToTUObjectArray = 0x10; 
     uintptr_t FUObjectItemPadd = 0x0;
-    uintptr_t FUObjectItemSize = 0x18;
+    uintptr_t FUObjectItemSize = 0x18;  // [Object* | Flags | ClusterIndex | SerialNumber]
 
     // TUObjectArray
     uintptr_t TUObjectArrayToNumElements = 0x14;
@@ -44,123 +40,74 @@ namespace Offsets {
     // UObject
     uintptr_t UObjectToInternalIndex = 0xC;
     uintptr_t UObjectToClassPrivate = 0x10;
-    uintptr_t UObjectToFNameIndex = UObjectToClassPrivate + PointerSize;
-    uintptr_t UObjectToOuterPrivate = UObjectToFNameIndex + PointerSize;
+    uintptr_t UObjectToFNameIndex = 0x18; // UObjectToClassPrivate + PointerSize
+    uintptr_t UObjectToOuterPrivate = 0x20; // UObjectToFNameIndex + PointerSize
 
-    // FField
+    // FField (UE5 Base Field)
     uintptr_t FFieldToClass = 0x8;
-    uintptr_t FFieldToNext = FFieldToClass + 0x10;
-    uintptr_t FFieldToName = FFieldToNext + PointerSize;
+    uintptr_t FFieldToNext = 0x18;        // FFieldToClass + 0x10
+    uintptr_t FFieldToName = 0x20;        // FFieldToNext + PointerSize
 
     // UField
     uintptr_t UFieldToNext = 0x28;
 
-    // UStruct
+    // UStruct / UClass (UE5 Properties Root)
     uintptr_t UStructToSuperStruct = 0x40;
-    uintptr_t UStructToChildren = UStructToSuperStruct + PointerSize;
-    uintptr_t UStructToChildProperties = 0x50;
+    uintptr_t UStructToChildren = 0x48;   // UStructToSuperStruct + PointerSize
+    uintptr_t UStructToChildProperties = 0x50; // Pointer to FProperty Chain
 
     // UFunction
     uintptr_t UFunctionToFunctionFlags = 0xB0;
-    uintptr_t UFunctionToFunc = UFunctionToFunctionFlags + UFieldToNext;
+    uintptr_t UFunctionToFunc = 0xD8;     // UFunctionToFunctionFlags + UFieldToNext (0xB0 + 0x28)
 
-    // UProperty
-    uintptr_t UPropertyToElementSize = 0x34;
-    uintptr_t UPropertyToPropertyFlags = UPropertyToElementSize + 0x4;
-    uintptr_t UPropertyToOffsetInternal = 0x44;
+    // FProperty (UE5 Base Property Offsets)
+    uintptr_t UPropertyToElementSize = 0x3C;
+    uintptr_t UPropertyToPropertyFlags = 0x40;
+    uintptr_t UPropertyToOffsetInternal = 0x4C;
 
-    // UBoolProperty
-    uintptr_t UBoolPropertyToFieldSize = 0x70;
-    uintptr_t UBoolPropertyToByteOffset = UBoolPropertyToFieldSize + 0x1;
-    uintptr_t UBoolPropertyToByteMask = UBoolPropertyToByteOffset + 0x1;
-    uintptr_t UBoolPropertyToFieldMask = UBoolPropertyToByteMask + 0x1;
+    // FBoolProperty
+    uintptr_t UBoolPropertyToFieldSize = 0x78;
+    uintptr_t UBoolPropertyToByteOffset = 0x79; // 0x78 + 0x1
+    uintptr_t UBoolPropertyToByteMask = 0x7A;   // 0x79 + 0x1
+    uintptr_t UBoolPropertyToFieldMask = 0x7B;  // 0x7A + 0x1
 
-    // UObjectProperty
-    uintptr_t UObjectPropertyToPropertyClass = UBoolPropertyToFieldSize;
+    // FObjectProperty
+    uintptr_t UObjectPropertyToPropertyClass = 0x78;
 
-    // UMapProperty
-    uintptr_t UMapPropertyToKeyProp = UBoolPropertyToFieldSize;
-    uintptr_t UMapPropertyToValueProp = UMapPropertyToKeyProp + PointerSize;
+    // FMapProperty
+    uintptr_t UMapPropertyToKeyProp = 0x80;
+    uintptr_t UMapPropertyToValueProp = 0x88;   // UMapPropertyToKeyProp + PointerSize
 
-    // USetProperty
-    uintptr_t USetPropertyToElementProp = UBoolPropertyToFieldSize;
+    // FSetProperty
+    uintptr_t USetPropertyToElementProp = 0x80;
 
-    // UStructProperty
-    uintptr_t UStructPropertyToStruct = UBoolPropertyToFieldSize;
+    // FStructProperty
+    uintptr_t UStructPropertyToStruct = 0x80;
 
-    // UArrayProperty
-    uintptr_t UArrayPropertyToInnerProperty = UBoolPropertyToFieldSize + PointerSize;
+    // FArrayProperty
+    uintptr_t UArrayPropertyToInnerProperty = 0x80;
 
-    // UClassProperty
-    uintptr_t UClassPropertyToMetaClass = UBoolPropertyToFieldSize + PointerSize;
+    // FClassProperty
+    uintptr_t UClassPropertyToMetaClass = 0x80;
 
-    // UInterfaceProperty
-    uintptr_t UInterfacePropertyToUInterface = UBoolPropertyToFieldSize + PointerSize;
+    // FInterfaceProperty
+    uintptr_t UInterfacePropertyToUInterface = 0x80;
 
     // UWorld
     uintptr_t UWorldToPersistentLevel = 0x30;
 
     // ULevel
     uintptr_t ULevelToAActors = 0x98;
-    uintptr_t ULevelToAActorsCount = ULevelToAActors + PointerSize;
+    uintptr_t ULevelToAActorsCount = 0xA0; // ULevelToAActors + PointerSize
 
-    /*
-    Most of the time the Offsets for
-    UBoolPropertyToFieldSize, UObjectPropertyToPropertyClass, UMapPropertyToKeyProp, USetPropertyToElementProp & UStructPropertyToStruct are all same
-    sometimes even UArrayPropertyToInnerProperty
+    void Fortnitev2130() {
+        Memory.GameName = "Fortnite v21.30";
+        Memory.TargetProcess = "libUnreal.so";
 
-    and
+        isUE423 = true; // Maintains 64-bit alignment logic for UE5 structure readers
 
-    UArrayPropertyToInnerProperty, UClassPropertyToMetaClass, UInterfacePropertyToUInterface are all same
-
-    Also most of the time (Almost 100% for me) UArrayPropertyToInnerProperty, UClassPropertyToMetaClass, UInterfacePropertyToUInterface are +0x8 from UBoolPropertyToFieldSize
-
-    */
-
-    void ExampleGame() {
-        Memory.GameName = "Test Game";
-        Memory.TargetProcess = "libUE4.so";
-
-        isUE423 = true;
-
-        GWorld = 0x120;
-        GNames = 0x120;
-        GUObjectArray = 0x120;
-
-        /*
-        uintptr_t UBoolPropertyToFieldSize = 0x81;
-        uintptr_t UBoolPropertyToByteOffset = UBoolPropertyToFieldSize + 0x1;
-        uintptr_t UBoolPropertyToByteMask = UBoolPropertyToByteOffset + 0x1;
-        uintptr_t UBoolPropertyToFieldMask = UBoolPropertyToByteMask + 0x1;
-
-        // UObjectProperty
-        uintptr_t UObjectPropertyToPropertyClass = UBoolPropertyToFieldSize;
-
-        // UMapProperty
-        uintptr_t UMapPropertyToKeyProp = UBoolPropertyToFieldSize;
-        uintptr_t UMapPropertyToValueProp = UMapPropertyToKeyProp + PointerSize;
-
-        // USetProperty
-        uintptr_t USetPropertyToElementProp = UBoolPropertyToFieldSize;
-
-        // UStructProperty
-        uintptr_t UStructPropertyToStruct = UBoolPropertyToFieldSize;
-
-        // UArrayProperty
-        uintptr_t UArrayPropertyToInnerProperty = UBoolPropertyToFieldSize + PointerSize;
-
-        // UClassProperty
-        uintptr_t UClassPropertyToMetaClass = UBoolPropertyToFieldSize + PointerSize;
-
-        // UInterfaceProperty
-        uintptr_t UInterfacePropertyToUInterface = UBoolPropertyToFieldSize + PointerSize;
-
-        // UWorld
-        uintptr_t UWorldToPersistentLevel = 0x60;
-
-        // ULevel
-        uintptr_t ULevelToAActors = 0xA0;
-        uintptr_t ULevelToAActorsCount = ULevelToAActors + PointerSize;
-        */
+        GWorld = 0xDE34970;
+        GNames = 0xDC960C0;
+        GUObjectArray = 0xDCD6E08;
     }
 };
