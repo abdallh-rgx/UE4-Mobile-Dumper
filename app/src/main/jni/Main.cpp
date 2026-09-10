@@ -19,34 +19,7 @@
 static std::atomic<bool> g_dumpRunning{false};
 static std::mutex g_dumpMutex;
 
-static uintptr_t GetModuleBase(const char* moduleName) {
-    std::ifstream maps("/proc/self/maps");
-    if (!maps.is_open()) return 0;
-    std::string line;
-    std::string target = moduleName;
-    while (std::getline(maps, line)) {
-        if (line.find(target) == std::string::npos) continue;
-        size_t dash = line.find('-');
-        if (dash == std::string::npos) continue;
-        uintptr_t addr = strtoull(line.substr(0, dash).c_str(), nullptr, 16);
-        if (addr != 0) return addr;
-    }
-    return 0;
-}
-
-static bool IsMapped(uintptr_t addr, size_t size) {
-    std::ifstream maps("/proc/self/maps");
-    if (!maps.is_open()) return false;
-    std::string line;
-    while (std::getline(maps, line)) {
-        uintptr_t start = 0, end = 0;
-        if (sscanf(line.c_str(), "%lx-%lx", &start, &end) != 2) continue;
-        if (addr >= start && (addr + size) <= end) return true;
-    }
-    return false;
-}
-
-static uintptr_t ResolveGameBase() {
+static uintptr_t FindGameBase() {
     uintptr_t base = GetModuleBase("libUnreal.so");
     if (base != 0) {
         LOGI("libUnreal.so base = 0x%lx", base);
@@ -60,13 +33,25 @@ static uintptr_t ResolveGameBase() {
     return 0;
 }
 
+static bool IsAddressMapped(uintptr_t addr, size_t size) {
+    std::ifstream maps("/proc/self/maps");
+    if (!maps.is_open()) return false;
+    std::string line;
+    while (std::getline(maps, line)) {
+        uintptr_t start = 0, end = 0;
+        if (sscanf(line.c_str(), "%lx-%lx", &start, &end) != 2) continue;
+        if (addr >= start && (addr + size) <= end) return true;
+    }
+    return false;
+}
+
 static bool VerifyChain(uintptr_t base, uintptr_t offset, const char* name) {
     if (base == 0) return false;
 
     uintptr_t addr = base + offset;
     LOGI("%s: addr = 0x%lx", name, addr);
 
-    if (!IsMapped(addr, 8)) {
+    if (!IsAddressMapped(addr, 8)) {
         LOGE("%s: addr not mapped", name);
         return false;
     }
@@ -79,7 +64,7 @@ static bool VerifyChain(uintptr_t base, uintptr_t offset, const char* name) {
         return false;
     }
 
-    if (!IsMapped(value, 8)) {
+    if (!IsAddressMapped(value, 8)) {
         LOGE("%s: value not mapped", name);
         return false;
     }
@@ -111,7 +96,7 @@ static void AutoDumpThread() {
     uintptr_t base = 0;
     int waited = 0;
     while (base == 0 && waited < 180) {
-        base = ResolveGameBase();
+        base = FindGameBase();
         if (base == 0) {
             std::this_thread::sleep_for(std::chrono::seconds(3));
             waited += 3;
